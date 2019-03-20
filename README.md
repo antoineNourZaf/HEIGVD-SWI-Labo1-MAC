@@ -89,8 +89,11 @@ __ATTENTION__ : Le suivi de clients iPhone n'est plus possible que dans certaine
 
 __Question__ : quel type de trames sont nécessaires pour détecter les clients de manière passive ?
 
+*Il faut des trames "beacons" pour pouvoir ecouter les clients de manière passive*
+
 __Question__ : pourquoi le suivi n'est-il plus possible sur iPhone depuis iOS 8 ?
 
+*Depuis iOs 8, l'adresse MAC des iPhones peut changer ce qui rend impossible de suivre l'appareil entre deux détections*
 
 ### 2. Clients WiFi bavards
 a)	Utilisant le script que vous venez de développer comme base, faire les modifications nécessaires pour capturer les noms de réseau annoncés par les différents clients se trouvant à portée de votre scanner. 
@@ -111,6 +114,40 @@ Ainsi, à chaque fois que votre client imprime des résultats, il affiche quelqu
 Un fork du repo original . Puis, un Pull Request contenant :
 
 - Script de détection de clients 802.11 __abondamment commenté/documenté__
+
+```
+#!/usr/bin/python
+
+from scapy.all import *
+import requests
+
+# Function to execute when a packet was found
+def stationFound(packet):
+    # Use the mac address provided 
+    if (len(sys.argv) > 1):
+        if (packet.addr2 == sys.argv[1]):
+            print("The client with MAC address given ("+ sys.argv[1] +") has been found: ")
+            print(packet.info)
+            r = requests.get("http://macvendors.co/api/"+packet.addr2+"/pipe")
+            print(r.content)
+    # No mac address given
+    else:
+        if (packet.haslayer(Dot11) and packet.type == 0):
+            print("we find this devices : ")
+            print packet.addr2
+            r = requests.get("http://macvendors.co/api/vendorname/"+packet.addr2+"/pipe")
+            print(r.content)
+    
+
+if __name__ == '__main__':
+
+    print("Start the script to sniff devices...")
+    
+    # Sniff devices in the area
+    sniff(iface="wlan0mon", prn=stationFound, count=10,)
+    
+    print("End of sniffing...")
+```
 
 - Script de détection et affichage de SSID __abondamment commenté/documenté__
 
