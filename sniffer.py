@@ -9,7 +9,9 @@ def stationFound(packet):
             print("The client with MAC address given ("+ sys.argv[1] +") has been found: ")
             print(packet.info)
             packet.show()
-                        
+            r = requests.get("http://macvendors.co/api/"+packet.addr2+"/pipe")
+            r.raw
+            r.content
     else:
         if (packet.haslayer(Dot11) and packet.type == 0):
             print("we find this")
