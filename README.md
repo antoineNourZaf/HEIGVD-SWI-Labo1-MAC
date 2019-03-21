@@ -17,64 +17,6 @@ __A faire en équipes de deux personnes__
 *	Détecter si un certain client WiFi se trouve à proximité
 *	Obtenir une liste des SSIDs annoncés par les clients WiFi présents
 
-Vous allez devoir faire des recherches sur internet pour apprendre à utiliser Scapy et la suite aircrack pour vos manipulations. __Il est fortement conseillé d'employer une distribution Kali__ (on ne pourra pas assurer le support avec d'autres distributions). __Si vous utilisez une VM, il vous faudra une interface WiFi usb, disponible sur demande__.
-
-__ATTENTION :__ Pour vos manipulations, il pourrait être important de bien fixer le canal lors de vos captures et vos injections. Si vous en avez besoin, la méthode la plus sure est d'utiliser l'option :
-
-```--channel``` de ```airodump-ng```
-
-et de garder la fenêtre d'airodump ouverte en permanence pendant que vos scripts tournent ou vos manipulations sont effectuées.
-
-Pour les interfaces Alfa AWUS036ACH (interfaces noires), __il faut activer la compatibilité USB 3.0 sur votre VM__. Pour toute autre interface, il faudra utiliser USB 2.0 sur votre VM. __Les ports USB configurés en 1.0 ou 1.1 ne sont pas assez rapides pour sniffer du WiFi__.
-
-Pour passer une interface __Alfa AWUS036H, AWUS036NH et très probablement l'interface de votre propre laptop__ en mode monitor, il faudra utiliser la commande suivante (vérifiez avec ```ifconfig```que votre interface s'appelle bien ```wlan0```. Sinon, utilisez le nom correct dans la commande):
-
-```bash
-sudo airmon-ng start wlan0
-```
-
-Vous retrouverez ensuite une nouvelle interface ```wlan0mon``` qui fonctionne en mode monitor.
-
-Si vous utilisez les interfaces Alfa __AWUS036ACH__ (interfaces noires), il faudra faire les manipulations suivantes pour les configurer en mode monitor. __ATTENTION, utilisez les commandes suivantes uniquement si vous utilisez les interfaces AWUS036ACH__ :
-
-### Installer le driver (disponible sur Kali. Pour d'autres distributions, il faudra probablement le compiler à partir des sources) :
-
-```bash
-sudo apt-get install realtek-rtl88xxau-dkms
-```
-
-Ensuite, pour passer en mode monitor :
-
-### Mettre l'interface “down”
-
-```bash
-sudo ip link set wlan0 down
-```
-
-### Configurer le mode monitor
-
-```bash
-sudo iwconfig wlan0 mode monitor
-```
-
-### Si vous devez compiler le driver :
-
-```bash
-git clone https://github.com/astsam/rtl8812au.git
-cd rtl8812au
-make
-sudo make install
-```
-
-## Quelques pistes importantes avant de commencer (revenez les voir... vous en aurez besoin) :
-
-- Si vous devez capturer et injecter du trafic, il faudra configurer votre interface 802.11 en mode monitor.
-- Python a un mode interactif très utile pour le développement. Il suffit de l'invoquer avec la commande ```python```. Ensuite, vous pouvez importer Scapy, rc4 et autres et utiliser les commandes directement dans la console (voir script fourni pour plus d'information sur l'importation de modules). En fait, vous pouvez même exécuter tout le script fourni en mode interactif !
-- Scapy fonctionne aussi en mode interactif en invoquant la commande ```scapy```.  
-- Dans le mode interactif, « nom de variable + <enter> » vous retourne le contenu de la variable.
-- Pour visualiser en détail une trame avec Scapy en mode interactif, on utilise la fonction ```show()```. Par exemple, si vous chargez votre trame dans une variable nommée ```arp```, vous pouvez visualiser tous ces champs et ses valeurs avec la commande ```arp.show()```. Utilisez cette commande pour connaître les champs disponibles et les formats de chaque champ.
-- Pour obtenir les informations du constructeur de la MAC, vous pouvez vous servir de l'API du site ```http://macvendors.co/api/xx:xx:xx:xx:xx:xx```
-
 ## Travail à réaliser
 
 ### 1. Détecter si un ou plusieurs clients 802.11 spécifiques sont à portée
@@ -123,6 +65,8 @@ import requests
 from scapy.layers.dot11 import Dot11ProbeReq
 from scapy.sendrecv import sniff
 
+clientSearched = []
+
 # Function to execute when a packet was found
 def stationFound(packet):
 
@@ -131,16 +75,13 @@ def stationFound(packet):
 
         # Use the mac address provided
         if (len(sys.argv) > 1):
-            if (packet.addr2 == sys.argv[1]):
+        
+            # The client searched has been found. We print him once.
+            
+            if (packet.addr2 == sys.argv[1] and packet.addr2 not in clientSearched):
                 print("The client with MAC address given (" + sys.argv[1] + ") has been found: ")
-                r = requests.get("http://macvendors.co/api/" + packet.addr2 + "/pipe")
-                print(packet.addr2 + " | " + packet.info + " | " + r.content)
-
-        # No mac address given
-        else:
-            # We get informations from API to get manufacturer
-            r = requests.get("http://macvendors.co/api/vendorname/" + packet.addr2 + "/pipe")
-            print(packet.addr2 + " | " + packet.info + " | " + r.content)
+                clientSearched.append(packet.addr2)
+                print(packet.addr2 + " | " + packet.info)
 
 if __name__ == '__main__':
 

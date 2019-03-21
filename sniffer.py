@@ -5,6 +5,8 @@ import requests
 from scapy.layers.dot11 import Dot11ProbeReq
 from scapy.sendrecv import sniff
 
+clientSearched = []
+
 # Function to execute when a packet was found
 def stationFound(packet):
 
@@ -13,16 +15,13 @@ def stationFound(packet):
 
         # Use the mac address provided
         if (len(sys.argv) > 1):
-            if (packet.addr2 == sys.argv[1]):
-                print("The client with MAC address given (" + sys.argv[1] + ") has been found: ")
-                r = requests.get("http://macvendors.co/api/" + packet.addr2 + "/pipe")
-                print(packet.addr2 + " | " + packet.info + " | " + r.content)
 
-        # No mac address given
-        else:
-            # We get informations from API to get manufacturer
-            r = requests.get("http://macvendors.co/api/vendorname/" + packet.addr2 + "/pipe")
-            print(packet.addr2 + " | " + packet.info + " | " + r.content)
+            # The client searched has been found. We print him once.
+            if (packet.addr2 == sys.argv[1] and packet.addr2 not in clientSearched):
+
+                print("The client with MAC address given (" + sys.argv[1] + ") has been found: ")
+                clientSearched.append(packet.addr2)
+                print(packet.addr2 + " | " + packet.info)
 
 if __name__ == '__main__':
 
