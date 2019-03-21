@@ -89,7 +89,7 @@ __ATTENTION__ : Le suivi de clients iPhone n'est plus possible que dans certaine
 
 __Question__ : quel type de trames sont nécessaires pour détecter les clients de manière passive ?
 
-*Il faut des trames "beacons" pour pouvoir ecouter les clients de manière passive*
+*Il faut des trames "Probe request" pour pouvoir ecouter les clients de manière passive. Ils envoient ces trames a tout access points, et il y a juste besoin d'ecouter*
 
 __Question__ : pourquoi le suivi n'est-il plus possible sur iPhone depuis iOS 8 ?
 
@@ -118,34 +118,37 @@ Un fork du repo original . Puis, un Pull Request contenant :
 ```
 #!/usr/bin/python
 
-from scapy.all import *
+import sys
 import requests
+from scapy.layers.dot11 import Dot11ProbeReq
+from scapy.sendrecv import sniff
 
 # Function to execute when a packet was found
 def stationFound(packet):
-    # Use the mac address provided 
-    if (len(sys.argv) > 1):
-        if (packet.addr2 == sys.argv[1]):
-            print("The client with MAC address given ("+ sys.argv[1] +") has been found: ")
-            print(packet.info)
-            r = requests.get("http://macvendors.co/api/"+packet.addr2+"/pipe")
-            print(r.content)
-    # No mac address given
-    else:
-        if (packet.haslayer(Dot11) and packet.type == 0):
-            print("we find this devices : ")
-            print packet.addr2
-            r = requests.get("http://macvendors.co/api/vendorname/"+packet.addr2+"/pipe")
-            print(r.content)
-    
+
+    # Looking for probe requests which is given by station
+    if (packet.haslayer(Dot11ProbeReq)):
+
+        # Use the mac address provided
+        if (len(sys.argv) > 1):
+            if (packet.addr2 == sys.argv[1]):
+                print("The client with MAC address given (" + sys.argv[1] + ") has been found: ")
+                r = requests.get("http://macvendors.co/api/" + packet.addr2 + "/pipe")
+                print(packet.addr2 + " | " + packet.info + " | " + r.content)
+
+        # No mac address given
+        else:
+            # We get informations from API to get manufacturer
+            r = requests.get("http://macvendors.co/api/vendorname/" + packet.addr2 + "/pipe")
+            print(packet.addr2 + " | " + packet.info + " | " + r.content)
 
 if __name__ == '__main__':
 
     print("Start the script to sniff devices...")
-    
+
     # Sniff devices in the area
-    sniff(iface="wlan0mon", prn=stationFound, count=10,)
-    
+    sniff(iface="wlan0mon", prn=stationFound)
+
     print("End of sniffing...")
 ```
 
